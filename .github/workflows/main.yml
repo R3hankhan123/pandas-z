@@ -30,7 +30,7 @@ jobs:
           -w "/build" s390x/python:3.11 /bin/bash -ec '
           pip install --upgrade pip;
           pip install --upgrade setuptools;
-          pip install pandas==1.66.1;
+          pip install pandas==2.2.2;
           WHEEL_PATH=$(find /root/.cache/pip/wheels/ -name "pandas*.whl");
           cp $WHEEL_PATH /build/;'         
 
