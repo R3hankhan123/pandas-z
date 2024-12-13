@@ -1,0 +1,61 @@
+name: Build pandas wheel on IBMZ
+
+on:
+  push:
+    branches:
+      - main
+  workflow_call:
+    inputs:
+      release:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: "linux/s390x"
+
+      - name: Install
+        id: install
+        run: >-
+          docker run --rm --platform "linux/s390x"
+          --mount "type=bind,src=$(pwd),dst=/build"
+          -w "/build" s390x/python:3.11 /bin/bash -ec '
+          pip install --upgrade pip;
+          pip install --upgrade setuptools;
+          pip install pandas==1.66.1;
+          WHEEL_PATH=$(find /root/.cache/pip/wheels/ -name "pandas*.whl");
+          cp $WHEEL_PATH /build/;'         
+
+      - name: Create a tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "<>"
+          git tag 2.2.2
+          git push origin 2.2.2 -f
+
+      - name: Capture the file
+        id: capture
+        run: |
+          WHEEL_PATH=$(find $PWD -name "pandas*.whl")
+          echo "Found $WHEEL_PATH"
+          echo "ARTIFACT=$WHEEL_PATH" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 2.2.2
+          tag_name: 2.2.2
+          token: ${{ secrets.GH_TOKEN }}
+          files: ${{ steps.capture.outputs.ARTIFACT }}
+          draft: false
+          prerelease: false
