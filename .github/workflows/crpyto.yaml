@@ -22,7 +22,7 @@ jobs:
         with:
           platforms: "linux/s390x"
 
-      - name: Install and Build cryptography
+            - name: Install and Build cryptography
         id: install
         run: >-
           docker run --rm --platform "linux/s390x"
@@ -38,7 +38,9 @@ jobs:
           pip install wheel setuptools cffi;
           pip wheel cryptography==43.0.1;
           WHEEL_PATH=$(find . -name "cryptography*.whl");
-          cp $WHEEL_PATH /build/;'
+          if [ "$WHEEL_PATH" != "/build/$(basename $WHEEL_PATH)" ]; then
+              cp $WHEEL_PATH /build/;
+          fi'
 
       - name: Create a tag
         env:
