@@ -1,0 +1,59 @@
+name: Build krb5 wheel on IBMZ
+
+on:
+  push:
+    branches:
+      - main
+  workflow_call:
+    inputs:
+      release:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: "linux/s390x"
+
+      - name: Install
+        id: install
+        run: >-
+          docker run --rm --platform "linux/s390x"
+          --mount "type=bind,src=$(pwd),dst=/build"
+          -w "/build" s390x/python:3.11 /bin/bash -ec '
+          apt-get install -y     gcc     libkrb5-dev     krb5-config;
+          pip install --upgrade pip;
+          pip install --upgrade setuptools;
+          pip install krb5==0.7.0;
+          WHEEL_PATH=$(find /root/.cache/pip/wheels/ -name "krb5*.whl");
+          cp $WHEEL_PATH /build/;'         
+      - name: Create a tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "<>"
+          git tag 0.7.0
+          git push origin 0.7.0 -f
+      - name: Capture the file
+        id: capture
+        run: |
+          WHEEL_PATH=$(find $PWD -name "krb5*.whl")
+          echo "Found $WHEEL_PATH"
+          echo "ARTIFACT=$WHEEL_PATH" >> $GITHUB_OUTPUT
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 0.7.0
+          tag_name: 0.7.0
+          token: ${{ secrets.GH_TOKEN }}
+          files: ${{ steps.capture.outputs.ARTIFACT }}
+          draft: false
+          prerelease: false
