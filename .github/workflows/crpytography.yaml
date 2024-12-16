@@ -27,6 +27,7 @@ jobs:
           docker run --rm --platform "linux/s390x"
           --mount "type=bind,src=$(pwd),dst=/build"
           -w "/build" s390x/python:3.11 /bin/bash -ec '
+          python --version;
           apt-get update && apt-get install -y libssl-dev pkg-config curl libhdf5-dev git gcc;
           curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs > sh.rustup.rs;
           export CARGO_HOME=/root/.cargo;
@@ -35,11 +36,8 @@ jobs:
           . "$CARGO_HOME/env";
           pip install --upgrade pip;
           pip install wheel setuptools cffi;
-          pip wheel cryptography==43.0.1;
-          WHEEL_PATH=$(find . -name "cryptography*.whl");
-          if [ "$WHEEL_PATH" != "/build/$(basename $WHEEL_PATH)" ]; then
-              cp $WHEEL_PATH /build/;
-          fi'
+          pip wheel cryptography==43.0.1 -w /build;'
+
 
       - name: Create a tag
         env:
