@@ -28,7 +28,7 @@ jobs:
           docker run --rm --platform "linux/s390x"
           --mount "type=bind,src=$(pwd),dst=/build"
           -w "/build" s390x/python:3.11 /bin/bash -ec '
-          apt-get install -y gcc libkrb5-dev krb5-user;;
+          apt-get install -y gcc libkrb5-dev krb5-user;
           pip install --upgrade pip;
           pip install --upgrade setuptools;
           pip install krb5==0.7.0;
