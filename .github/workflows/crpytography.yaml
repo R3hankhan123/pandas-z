@@ -1,0 +1,68 @@
+name: Build cryptography wheel on IBMZ
+on:
+  push:
+    branches:
+      - main
+  workflow_call:
+    inputs:
+      release:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: "linux/s390x"
+
+            - name: Install and Build cryptography
+        id: install
+        run: >-
+          docker run --rm --platform "linux/s390x"
+          --mount "type=bind,src=$(pwd),dst=/build"
+          -w "/build" s390x/python:3.11 /bin/bash -ec '
+          apt-get update && apt-get install -y libssl-dev pkg-config curl libhdf5-dev git gcc;
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs > sh.rustup.rs;
+          export CARGO_HOME=/root/.cargo;
+          sh ./sh.rustup.rs -y;
+          export PATH=$PATH:$CARGO_HOME/bin;
+          . "$CARGO_HOME/env";
+          pip install --upgrade pip;
+          pip install wheel setuptools cffi;
+          pip wheel cryptography==43.0.1;
+          WHEEL_PATH=$(find . -name "cryptography*.whl");
+          if [ "$WHEEL_PATH" != "/build/$(basename $WHEEL_PATH)" ]; then
+              cp $WHEEL_PATH /build/;
+          fi'
+
+      - name: Create a tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "<>"
+          git tag 43.0.1
+          git push origin 43.0.1 -f
+
+      - name: Capture the file
+        id: capture
+        run: |
+          WHEEL_PATH=$(find $PWD -name "cryptography*.whl")
+          echo "Found $WHEEL_PATH"
+          echo "ARTIFACT=$WHEEL_PATH" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 43.0.1
+          tag_name: 43.0.1
+          token: ${{ secrets.GH_TOKEN }}
+          files: ${{ steps.capture.outputs.ARTIFACT }}
+          draft: false
+          prerelease: false
